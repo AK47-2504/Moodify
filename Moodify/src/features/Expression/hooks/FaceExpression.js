@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { FaceLandmarker, FilesetResolver } from "@mediapipe/tasks-vision";
 import "../styles/expression.scss";
+import { calculateExpression } from "../utils/expressionUtils";
 
 export const useFaceExpression = () => {
   const videoRef = useRef(null);
@@ -58,71 +59,13 @@ export const useFaceExpression = () => {
       if (results.faceBlendshapes?.length > 0) {
         const categories = results.faceBlendshapes[0].categories;
 
-        const get = (name) =>
-          categories.find((c) => c.categoryName === name)?.score || 0;
-
-        // Happy
-        const smile = get("mouthSmileLeft") + get("mouthSmileRight");
-
-        // Sleeping
-        const eyeClosed = get("eyeBlinkLeft") + get("eyeBlinkRight");
-
         const now = Date.now();
 
-        // Surprise
-        const jawOpen = get("jawOpen");
-        const eyeWide = get("eyeLookDownLeft") + get("eyeLookDownRight");
-        const browUp = get("browOuterUpLeft") + get("browOuterUpRight");
-
-        const surpriseScore = jawOpen + eyeWide + browUp;
-
-        // Sad
-        const frown = get("browDownLeft") + get("browDownRight");
-        const mouthDown = (get("eyeSquintLeft") + get("eyeSquintRight")) / 2;
-        const sadScore = frown + mouthDown * 0.2;
-
-        // 🎯 Weighted Emotion Comparison
-
-        let newExpression = "Neutral";
-        let maxScore = 0.5; // base confidence threshold
-
-        if (smile > maxScore) {
-          maxScore = smile;
-          newExpression = "Happy";
-        }
-
-        // Sleeping
-        if (eyeClosed > 1.2) {
-          if (!sleepStartRef.current) {
-            sleepStartRef.current = now; // start timer
-          }
-
-          // Check karo 2 second ho gaye?
-          if (now - sleepStartRef.current > 1000) {
-            newExpression = "Sleeping";
-          }
-        } else {
-          // Eyes open ho gayi → reset timer
-          sleepStartRef.current = null;
-        }
-
-        if (
-          surpriseScore > maxScore &&
-          jawOpen > 0.5 && // must be strong
-          eyeWide > 0.4
-        ) {
-          maxScore = surpriseScore;
-          newExpression = "Surprise";
-        }
-
-        if (
-          sadScore > maxScore &&
-          smile < 0.5 && // prevent smile override
-          jawOpen < 0.4 // prevent surprise conflict
-        ) {
-          maxScore = sadScore;
-          newExpression = "Sad";
-        }
+        const newExpression = calculateExpression({
+          categories,
+          sleepStartRef,
+          now,
+        });
 
         frameCounter.current += 1;
 
