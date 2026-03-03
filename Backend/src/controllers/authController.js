@@ -2,6 +2,7 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const userModel = require("../models/user.model");
 const blackListModel = require("../models/blacklist.model");
+const redis = require("../config/cache");
 
 async function registerUserController(req, res) {
   const { username, email, password } = req.body;
@@ -102,17 +103,19 @@ async function getMeController(req, res) {
 
 async function logoutUserController(req, res) {
   const token = req.cookies.token;
-
   res.clearCookie("token");
 
-  const isTokenBalcklisted = await blackListModel.findOne({ token });
-  if (isTokenBalcklisted) {
-    return res.status(401).json({
-      message: "Invalid Token",
-    });
-  }
+  // redis.set(key, value, expireIn)
+  await redis.set(token, Date.now().toString(), "EX", 60 * 60);
 
-  await blackListModel.create({ token });
+  // const isTokenBalcklisted = await blackListModel.findOne({ token });
+  // if (isTokenBalcklisted) {
+  //   return res.status(401).json({
+  //     message: "Invalid Token",
+  //   });
+  // }
+
+  // await blackListModel.create({ token });
   return res.status(200).json({
     message: "Logout Successfully",
   });
