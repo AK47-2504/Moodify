@@ -21,6 +21,7 @@
   }
 
   &:active {
+    scale: 0.95;
     transform: translateY(0);
     box-shadow: 0 6px 15px rgba(255, 106, 14, 0.25);
   }
